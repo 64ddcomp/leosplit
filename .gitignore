@@ -1,1 +1,10 @@
+# Absolutely NO copyrighted Game ROMs.
+
 *.ndd
+
+# No manifestations.
+*.json
+*.yaml
+
+# None of these shit
+*.bin

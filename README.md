@@ -1,6 +1,10 @@
 # leosplit
 
-A lightweight Python tool for generating a manifest from 64DD `.ndd` images.
+A binary splitting tool for 64DD `.ndd` images, built to assist decompilation and modding projects.
+
+`leosplit` is intended to fill a role similar to Splat for 64DD disk images:
+identify loadable binaries, record their disk/LBA and RDRAM mapping metadata,
+then extract those ranges into standalone files for tools like Ghidra.
 
 ## Features
 
@@ -9,11 +13,20 @@ A lightweight Python tool for generating a manifest from 64DD `.ndd` images.
 - **DOL Fallback**: Automatically detects and parses GameCube DOL executable files if native metadata is not found
 - **Multiple Output Formats**: JSON (default) or YAML output
 - **File Identification**: Extracts cartridge file/module names and metadata
+- **Binary Extraction**: Uses a generated manifest to dump each LBA range into its own `.bin` file
 
 ## Usage
 
+Generate a manifest:
+
 ```bash
 python leosplit_manifest.py input.ndd -o manifest.json
+```
+
+Extract binaries from a manifest:
+
+```bash
+python leosplit_extract.py input.ndd manifest.json -o extracted
 ```
 
 The manifest includes:
@@ -29,6 +42,13 @@ The manifest includes:
 - **JSON** (default): `python leosplit_manifest.py input.ndd -o manifest.json`
 - **YAML**: `python leosplit_manifest.py input.ndd --format yaml`
 
+The extractor accepts either generated JSON or generated YAML:
+
+```bash
+python leosplit_extract.py NUD-DMTJ-JPN1.ndd talentstudio.json -o extracted
+python leosplit_extract.py NUD-DMTJ-JPN1.ndd talentstudio.yaml -o extracted --overwrite
+```
+
 ## Example
 
 ```bash
@@ -40,7 +60,13 @@ python leosplit_manifest.py input.ndd --format yaml
 
 # Verbose output with parsing details
 python leosplit_manifest.py input.ndd --verbose
+
+# Extract files and print offsets/load addresses
+python leosplit_extract.py input.ndd manifest.json -o extracted --verbose
 ```
+
+Extractor output files are named with the manifest ID and sanitized file name,
+for example `extracted/03_NICHIYOUBI.bin`.
 
 ## How It Works
 
@@ -53,10 +79,15 @@ python leosplit_manifest.py input.ndd --verbose
    - Validates DOL header structure
    - Extracts load address and entry point from RDRAM addresses
 
+3. **Extraction**: Reads each manifest entry
+   - Seeks to `lba_start * sector_size` in the `.ndd`
+   - Reads `lba_length * sector_size` bytes
+   - Writes the result as a standalone `.bin`
+
 ## Testing
 
 ```bash
-python -m unittest tests/test_manifest.py
+python -m unittest tests.test_manifest tests.test_extract
 ```
 
 ## Sample Output
@@ -65,7 +96,7 @@ python -m unittest tests/test_manifest.py
 {
   "source_file": "NUD-DMTJ-JPN1.ndd",
   "sector_size": 2048,
-  "file_count": 4,
+  "file_count": 17,
   "files": [
     {
       "file_id": 1,
