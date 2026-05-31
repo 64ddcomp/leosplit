@@ -1,5 +1,4 @@
 # Absolutely NO copyrighted Game ROMs.
-
 *.ndd
 
 # No manifestations.
@@ -8,3 +7,7 @@
 
 # None of these shit
 *.bin
+
+# Generated workspaces.
+extracted/
+split/

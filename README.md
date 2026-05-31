@@ -15,6 +15,7 @@ then extract those ranges into standalone files for tools like Ghidra.
 - **File Identification**: Extracts cartridge file/module names and metadata
 - **MFS Binary Extraction**: Traverses 64DD MFS directory entries and carves exact byte ranges from `.ndd` images
 - **Manifest Binary Extraction**: Still supports generated manifests for load-table based workflows
+- **Splat-like Assembly Workspace**: Emits raw bins, MIPS assembly listings, symbol hints, and a YAML segment skeleton
 
 ## Usage
 
@@ -41,6 +42,25 @@ Extract binaries from a manifest:
 ```bash
 python leosplit_extract.py input.ndd manifest.json -o extracted
 ```
+
+Create a Splat-like assembly workspace from the manifest:
+
+```bash
+python leosplit_asm.py input.ndd manifest.json -o split --overwrite --verbose
+```
+
+Restrict disassembly when you know a specific code span:
+
+```bash
+python leosplit_asm.py input.ndd manifest.json -o split --overwrite \
+  --code-range 3:0x80280000-0x802C0000
+```
+
+This writes:
+- `split/bin/*.bin`: exact carved segment bytes
+- `split/asm/*.s`: big-endian MIPS assembly listings using manifest VRAM addresses
+- `split/symbols/*.sym`: entry labels, branch/jump labels, and rough data boundary hints
+- `split/leosplit.yaml`: a Splat-style segment skeleton for the project
 
 The manifest includes:
 - `file_id`: Unique identifier for each file entry
@@ -76,6 +96,9 @@ python leosplit_manifest.py input.ndd --verbose
 
 # Extract files and print offsets/load addresses
 python leosplit_extract.py input.ndd manifest.json -o extracted --verbose
+
+# Build a decompilation workspace with asm and symbol hints
+python leosplit_asm.py input.ndd manifest.json -o split --overwrite --verbose
 ```
 
 Extractor output files are named with the manifest ID and sanitized file name,
@@ -102,10 +125,17 @@ for example `extracted/03_NICHIYOUBI.bin`.
    - Reads `lba_length` blocks unless a byte-exact `file_size` is present
    - Writes the result as a standalone `.bin`
 
+5. **Assembly Workspace Generation**: Uses manifest load metadata as segment hints
+   - Treats each carved file as a loaded N64 MIPS segment
+   - Disassembles words using big-endian MIPS decoding
+   - Accepts explicit code ranges by file ID, manifest name, or generated segment name
+   - Labels entry points and local branch/jump targets
+   - Emits comments for possible data boundaries such as string regions and long zero runs
+
 ## Testing
 
 ```bash
-python -m unittest tests.test_manifest tests.test_extract
+python -m unittest tests.test_manifest tests.test_extract tests.test_asm
 ```
 
 ## Sample Output
