@@ -187,7 +187,7 @@ class TestLeoSplitAsm(unittest.TestCase):
                 {"source_file": "NUD-DSCJ-JPN.ndd"},
             )
 
-        self.assertEqual(metadata.name, "SimCity 64")
+        self.assertEqual(metadata.name, "Sim City 64")
         self.assertEqual(metadata.basename, "simcity64")
         self.assertEqual(metadata.ld_script_path, "simcity64.ld")
         self.assertEqual(metadata.game_code, "DSCJ")

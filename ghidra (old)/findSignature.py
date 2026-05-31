@@ -8,7 +8,8 @@
 from ghidra.program.model.symbol import SourceType
 
 # Base memory address where the text section starts in Ghidra
-base_addr = currentProgram.getImageBase()
+# currentProgram is injected by Ghidra's Jython runtime.
+base_addr = currentProgram.getImageBase()  # noqa: F821
 
 # Dictionary of offsets and names from the nm command
 symbols = {
@@ -23,5 +24,6 @@ symbols = {
 
 for offset, name in symbols.items():
     target_addr = base_addr.add(offset)
-    createLabel(target_addr, name, True, SourceType.USER_DEFINED)
+    # createLabel is injected by Ghidra's script runtime.
+    createLabel(target_addr, name, True, SourceType.USER_DEFINED)  # noqa: F821
     print("Labeled %s at %s" % (name, target_addr))
