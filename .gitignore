@@ -11,3 +11,4 @@
 # Generated workspaces.
 extracted/
 split/
+split-*/

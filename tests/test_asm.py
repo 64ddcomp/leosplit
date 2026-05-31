@@ -8,6 +8,7 @@ from leosplit_asm import (
     create_workspace,
     decode_instruction,
     disassemble_segment,
+    infer_project_metadata,
     load_manifest,
     load_segments,
     parse_code_range_overrides,
@@ -131,6 +132,12 @@ class TestLeoSplitAsm(unittest.TestCase):
                 self.assertEqual(f.read(), payload)
             with open(os.path.join(output_dir, "symbols", "01_BOOT.sym"), "r", encoding="utf-8") as f:
                 self.assertIn("L80200000 = 0x80200000; // entry", f.read())
+            with open(os.path.join(output_dir, "leosplit.yaml"), "r", encoding="utf-8") as f:
+                yaml_text = f.read()
+            self.assertIn("name: test", yaml_text)
+            self.assertIn("basename: test", yaml_text)
+            self.assertIn("ld_script_path: test.ld", yaml_text)
+            self.assertIn("compiler_detection:", yaml_text)
 
     def test_load_segments_uses_manifest_addresses(self):
         with tempfile.TemporaryDirectory() as tmp_dir:
@@ -168,6 +175,43 @@ class TestLeoSplitAsm(unittest.TestCase):
     def test_parse_code_range_overrides(self):
         overrides = parse_code_range_overrides(["1:0x80200000-0x80200100"])
         self.assertEqual(overrides, {"1": [(0x80200000, 0x80200100)]})
+
+    def test_infer_project_metadata_from_known_disk_code(self):
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            image_path = os.path.join(tmp_dir, "NUD-DSCJ-JPN.ndd")
+            with open(image_path, "wb") as f:
+                f.write(b"\x00" * 128)
+
+            metadata = infer_project_metadata(
+                image_path,
+                {"source_file": "NUD-DSCJ-JPN.ndd"},
+            )
+
+        self.assertEqual(metadata.name, "SimCity 64")
+        self.assertEqual(metadata.basename, "simcity64")
+        self.assertEqual(metadata.ld_script_path, "simcity64.ld")
+        self.assertEqual(metadata.game_code, "DSCJ")
+
+    def test_infer_project_metadata_honors_overrides(self):
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            image_path = os.path.join(tmp_dir, "NUD-DMTJ-JPN1.ndd")
+            with open(image_path, "wb") as f:
+                f.write(b"\x00" * 128)
+
+            metadata = infer_project_metadata(
+                image_path,
+                {"source_file": "NUD-DMTJ-JPN1.ndd"},
+                name_override="My Game",
+                basename_override="mygame",
+                compiler_override="GCC",
+                ld_script_override="custom.ld",
+            )
+
+        self.assertEqual(metadata.name, "My Game")
+        self.assertEqual(metadata.basename, "mygame")
+        self.assertEqual(metadata.compiler, "GCC")
+        self.assertEqual(metadata.compiler_detection, "provided by --compiler")
+        self.assertEqual(metadata.ld_script_path, "custom.ld")
 
 
 if __name__ == "__main__":

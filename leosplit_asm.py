@@ -42,6 +42,28 @@ class DecodedInstruction:
     is_return: bool = False
 
 
+@dataclass(frozen=True)
+class ProjectMetadata:
+    name: str
+    basename: str
+    compiler: str
+    ld_script_path: str
+    game_code: str
+    compiler_detection: str
+
+
+KNOWN_DISK_TITLES = {
+    "DMTJ": "Mario Artist Talent Studio",
+    "DSCJ": "Sim City 64",
+}
+
+
+KNOWN_DISK_BASENAMES = {
+    "DMTJ": "talentstudio",
+    "DSCJ": "simcity64",
+}
+
+
 REGISTER_NAMES = (
     "zero",
     "at",
@@ -155,6 +177,112 @@ def format_offset(base: int, offset: int) -> str:
 
 def label_for(address: int) -> str:
     return f"L{address:08X}"
+
+
+def slugify_name(name: str) -> str:
+    slug = sanitize_name(name).lower()
+    return slug.replace(".", "_") or "unknown"
+
+
+def yaml_scalar(value: str) -> str:
+    if value == "" or any(ch in value for ch in ":#[]{}&,*?|\"><!%@`"):
+        return json.dumps(value)
+    return value
+
+
+def extract_disk_code(path: str) -> str:
+    stem = os.path.splitext(os.path.basename(path))[0].upper()
+    parts = stem.split("-")
+    if len(parts) >= 2 and len(parts[1]) >= 4:
+        return parts[1][:4]
+    return ""
+
+
+def decode_ascii_title(data: bytes, offset: int, size: int = 64) -> str:
+    raw = data[offset : offset + size].split(b"\x00", 1)[0].strip()
+    if len(raw) < 4:
+        return ""
+    try:
+        text = raw.decode("ascii")
+    except UnicodeDecodeError:
+        return ""
+    if sum(ch.isprintable() and not ch.isspace() for ch in text) < 4:
+        return ""
+    return " ".join(text.split())
+
+
+def find_embedded_title(data: bytes) -> str:
+    title_patterns = [
+        b"SimCity 64",
+        b"SimCity",
+        b"Mario Artist Talent Studio",
+        b"MarioArtist",
+    ]
+    for pattern in title_patterns:
+        if pattern in data:
+            return pattern.decode("ascii")
+    return decode_ascii_title(data, 0x20)
+
+
+def detect_compiler(data: bytes) -> Tuple[str, str]:
+    markers = (
+        (b"SN Systems", "SN64", "matched SN Systems marker"),
+        (b"SN64", "SN64", "matched SN64 marker"),
+        (b"egcs", "GCC", "matched egcs marker"),
+        (b"GCC:", "GCC", "matched GCC version marker"),
+        (b"gcc version", "GCC", "matched GCC version marker"),
+        (b"CodeWarrior", "MWCC", "matched CodeWarrior marker"),
+    )
+    lowered = data.lower()
+    for marker, compiler, reason in markers:
+        haystack = lowered if marker.islower() else data
+        if marker in haystack:
+            return compiler, reason
+    return "IDO", "assumed N64/N64DD default; no compiler marker found"
+
+
+def infer_project_metadata(
+    image_path: str,
+    manifest: Dict[str, Any],
+    name_override: Optional[str] = None,
+    basename_override: Optional[str] = None,
+    compiler_override: Optional[str] = None,
+    ld_script_override: Optional[str] = None,
+) -> ProjectMetadata:
+    source_file = str(manifest.get("source_file") or os.path.basename(image_path))
+    disk_code = extract_disk_code(source_file) or extract_disk_code(image_path)
+
+    with open(image_path, "rb") as image:
+        probe = image.read(4 * 1024 * 1024)
+
+    title = (
+        name_override
+        or str(manifest.get("name") or "")
+        or KNOWN_DISK_TITLES.get(disk_code, "")
+        or find_embedded_title(probe)
+        or os.path.splitext(os.path.basename(source_file))[0]
+    )
+    basename = (
+        basename_override
+        or str(manifest.get("basename") or "")
+        or KNOWN_DISK_BASENAMES.get(disk_code, "")
+        or slugify_name(title)
+    )
+    compiler, compiler_detection = detect_compiler(probe)
+    if compiler_override:
+        compiler = compiler_override
+        compiler_detection = "provided by --compiler"
+
+    ld_script_path = ld_script_override or str(manifest.get("ld_script_path") or f"{basename}.ld")
+
+    return ProjectMetadata(
+        name=title,
+        basename=basename,
+        compiler=compiler,
+        ld_script_path=ld_script_path,
+        game_code=disk_code,
+        compiler_detection=compiler_detection,
+    )
 
 
 def decode_instruction(word: int, address: int) -> DecodedInstruction:
@@ -462,18 +590,25 @@ def load_segments(
     return segments
 
 
-def dump_workspace_yaml(image_path: str, manifest: Dict[str, Any], segments: Sequence[SplitSegment]) -> str:
+def dump_workspace_yaml(
+    image_path: str,
+    manifest: Dict[str, Any],
+    segments: Sequence[SplitSegment],
+    metadata: ProjectMetadata,
+) -> str:
     lines = [
-        "name: talentstudio",
-        "basename: talentstudio",
+        f"name: {yaml_scalar(metadata.name)}",
+        f"basename: {yaml_scalar(metadata.basename)}",
         "platform: n64dd",
         f"source_file: {os.path.basename(image_path)}",
+        f"game_code: {yaml_scalar(metadata.game_code)}",
         "options:",
-        "  compiler: IDO",
+        f"  compiler: {yaml_scalar(metadata.compiler)}",
+        f"  compiler_detection: {yaml_scalar(metadata.compiler_detection)}",
         "  asm_path: asm",
         "  src_path: src",
         "  build_path: build",
-        "  ld_script_path: talentstudio.ld",
+        f"  ld_script_path: {yaml_scalar(metadata.ld_script_path)}",
         "segments:",
     ]
     for segment in segments:
@@ -539,9 +674,21 @@ def create_workspace(
     output_dir: str,
     overwrite: bool = False,
     code_range_overrides: Optional[Dict[str, List[Tuple[int, int]]]] = None,
+    name_override: Optional[str] = None,
+    basename_override: Optional[str] = None,
+    compiler_override: Optional[str] = None,
+    ld_script_override: Optional[str] = None,
 ) -> List[Dict[str, Any]]:
     manifest = load_manifest(manifest_path)
     segments = load_segments(image_path, manifest, code_range_overrides)
+    metadata = infer_project_metadata(
+        image_path,
+        manifest,
+        name_override,
+        basename_override,
+        compiler_override,
+        ld_script_override,
+    )
 
     asm_dir = os.path.join(output_dir, "asm")
     bin_dir = os.path.join(output_dir, "bin")
@@ -574,7 +721,7 @@ def create_workspace(
 
     write_text(
         os.path.join(output_dir, "leosplit.yaml"),
-        dump_workspace_yaml(image_path, manifest, segments),
+        dump_workspace_yaml(image_path, manifest, segments, metadata),
         overwrite,
     )
     return results
@@ -586,6 +733,10 @@ def parse_arguments() -> argparse.Namespace:
     )
     parser.add_argument("input", help="Path to the .ndd image")
     parser.add_argument("manifest", help="Path to the JSON/YAML manifest")
+    parser.add_argument("--name", help="Project/game display name for leosplit.yaml")
+    parser.add_argument("--basename", help="Project basename for paths and linker script defaults")
+    parser.add_argument("--compiler", help="Override inferred compiler")
+    parser.add_argument("--ld-script-path", help="Override linker script path in leosplit.yaml")
     parser.add_argument(
         "-o",
         "--output-dir",
@@ -637,6 +788,10 @@ def main() -> int:
             args.output_dir,
             args.overwrite,
             parse_code_range_overrides(args.code_range),
+            args.name,
+            args.basename,
+            args.compiler,
+            args.ld_script_path,
         )
     except (OSError, ValueError, KeyError, TypeError, json.JSONDecodeError, struct.error) as exc:
         print(f"Error: {exc}", file=sys.stderr)

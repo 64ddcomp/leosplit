@@ -49,6 +49,16 @@ Create a Splat-like assembly workspace from the manifest:
 python leosplit_asm.py input.ndd manifest.json -o split --overwrite --verbose
 ```
 
+LeoSplit infers the YAML project name and basename from known 64DD disk codes,
+manifest metadata, embedded title strings, or finally the image filename. It
+also emits a compiler guess with a detection reason. Override any of these when
+you know better:
+
+```bash
+python leosplit_asm.py NUD-DSCJ-JPN.ndd simcity64.json -o split-simcity --overwrite \
+  --name "SimCity 64" --basename simcity64 --compiler IDO
+```
+
 Restrict disassembly when you know a specific code span:
 
 ```bash
@@ -127,6 +137,8 @@ for example `extracted/03_NICHIYOUBI.bin`.
 
 5. **Assembly Workspace Generation**: Uses manifest load metadata as segment hints
    - Treats each carved file as a loaded N64 MIPS segment
+   - Infers project name/basename from disk code, embedded strings, manifest data, or filename
+   - Detects obvious compiler markers, otherwise records the N64/N64DD IDO default assumption
    - Disassembles words using big-endian MIPS decoding
    - Accepts explicit code ranges by file ID, manifest name, or generated segment name
    - Labels entry points and local branch/jump targets
