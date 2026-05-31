@@ -4,7 +4,7 @@ import struct
 import tempfile
 import unittest
 
-from leosplit_asm import (
+from leosplit.disassembler.leosplit_asm import (
     create_workspace,
     decode_instruction,
     disassemble_segment,

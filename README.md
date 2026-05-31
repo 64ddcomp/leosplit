@@ -19,34 +19,40 @@ then extract those ranges into standalone files for tools like Ghidra.
 
 ## Usage
 
+Install for local development:
+
+```bash
+python -m pip install -e .
+```
+
 Generate a manifest:
 
 ```bash
-python leosplit_manifest.py input.ndd -o manifest.json
+leosplit-manifest input.ndd -o manifest.json
 ```
 
 Extract files directly from a 64DD MFS image:
 
 ```bash
-python leosplit_extract.py input.ndd -o extracted
+leosplit-extract input.ndd -o extracted
 ```
 
 List detected MFS entries without extracting:
 
 ```bash
-python leosplit_extract.py input.ndd --list
+leosplit-extract input.ndd --list
 ```
 
 Extract binaries from a manifest:
 
 ```bash
-python leosplit_extract.py input.ndd manifest.json -o extracted
+leosplit-extract input.ndd manifest.json -o extracted
 ```
 
 Create a Splat-like assembly workspace from the manifest:
 
 ```bash
-python leosplit_asm.py input.ndd manifest.json -o split --overwrite --verbose
+leosplit-asm input.ndd manifest.json -o split --overwrite --verbose
 ```
 
 LeoSplit infers the YAML project name and basename from known 64DD disk codes,
@@ -55,14 +61,14 @@ also emits a compiler guess with a detection reason. Override any of these when
 you know better:
 
 ```bash
-python leosplit_asm.py NUD-DSCJ-JPN.ndd simcity64.json -o split-simcity --overwrite \
+leosplit-asm NUD-DSCJ-JPN.ndd simcity64.json -o split-simcity --overwrite \
   --name "SimCity 64" --basename simcity64 --compiler IDO
 ```
 
 Restrict disassembly when you know a specific code span:
 
 ```bash
-python leosplit_asm.py input.ndd manifest.json -o split --overwrite \
+leosplit-asm input.ndd manifest.json -o split --overwrite \
   --code-range 3:0x80280000-0x802C0000
 ```
 
@@ -82,33 +88,33 @@ The manifest includes:
 
 ## Output Formats
 
-- **JSON** (default): `python leosplit_manifest.py input.ndd -o manifest.json`
-- **YAML**: `python leosplit_manifest.py input.ndd --format yaml`
+- **JSON** (default): `leosplit-manifest input.ndd -o manifest.json`
+- **YAML**: `leosplit-manifest input.ndd --format yaml`
 
 The extractor accepts either generated JSON or generated YAML:
 
 ```bash
-python leosplit_extract.py NUD-DMTJ-JPN1.ndd talentstudio.json -o extracted
-python leosplit_extract.py NUD-DMTJ-JPN1.ndd talentstudio.yaml -o extracted --overwrite
+leosplit-extract NUD-DMTJ-JPN1.ndd talentstudio.json -o extracted
+leosplit-extract NUD-DMTJ-JPN1.ndd talentstudio.yaml -o extracted --overwrite
 ```
 
 ## Example
 
 ```bash
 # Generate JSON manifest
-python leosplit_manifest.py NUD-DMTJ-JPN1.ndd -o manifest.json
+leosplit-manifest NUD-DMTJ-JPN1.ndd -o manifest.json
 
 # Output YAML to stdout
-python leosplit_manifest.py input.ndd --format yaml
+leosplit-manifest input.ndd --format yaml
 
 # Verbose output with parsing details
-python leosplit_manifest.py input.ndd --verbose
+leosplit-manifest input.ndd --verbose
 
 # Extract files and print offsets/load addresses
-python leosplit_extract.py input.ndd manifest.json -o extracted --verbose
+leosplit-extract input.ndd manifest.json -o extracted --verbose
 
 # Build a decompilation workspace with asm and symbol hints
-python leosplit_asm.py input.ndd manifest.json -o split --overwrite --verbose
+leosplit-asm input.ndd manifest.json -o split --overwrite --verbose
 ```
 
 Extractor output files are named with the manifest ID and sanitized file name,
@@ -147,7 +153,7 @@ for example `extracted/03_NICHIYOUBI.bin`.
 ## Testing
 
 ```bash
-python -m unittest tests.test_manifest tests.test_extract tests.test_asm
+python -m pytest
 ```
 
 ## Sample Output

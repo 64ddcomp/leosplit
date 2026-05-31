@@ -3,7 +3,7 @@ import os
 import struct
 import unittest
 
-from leosplit_manifest import (
+from leosplit.manifestor.leosplit_manifest import (
     find_dol_candidates,
     find_n64dd_load_table_entries,
     format_hex,

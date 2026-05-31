@@ -4,7 +4,7 @@ import struct
 import tempfile
 import unittest
 
-from leosplit_extract import (
+from leosplit.extractor.leosplit_extract import (
     NDD_IMAGE_SIZE,
     NDD_LBA_MAP,
     build_manifest_from_mfs,

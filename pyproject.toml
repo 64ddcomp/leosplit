@@ -1,0 +1,37 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "leosplit"
+version = "1.1.0a1"
+description = "64DD disk image splitting and decompilation helpers"
+readme = "README.md"
+requires-python = ">=3.9"
+authors = [
+  { name = "leosplit contributors" }
+]
+keywords = ["64dd", "n64", "decompilation", "romhacking", "splat"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Environment :: Console",
+  "Intended Audience :: Developers",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Topic :: Software Development :: Disassemblers",
+  "Topic :: System :: Archiving"
+]
+
+[project.scripts]
+leosplit-manifest = "leosplit.manifestor.leosplit_manifest:main"
+leosplit-extract = "leosplit.extractor.leosplit_extract:main"
+leosplit-asm = "leosplit.disassembler.leosplit_asm:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]

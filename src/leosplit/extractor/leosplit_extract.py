@@ -9,7 +9,7 @@ import sys
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
-from leosplit_manifest import sanitize_name
+from leosplit.manifestor.leosplit_manifest import sanitize_name
 
 SECTOR_SIZE_DEFAULT = 2048
 NDD_IMAGE_SIZE = 64_458_560

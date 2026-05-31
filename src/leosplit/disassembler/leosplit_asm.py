@@ -9,13 +9,13 @@ import sys
 from dataclasses import dataclass
 from typing import Any, Dict, Iterable, List, Optional, Sequence, Set, Tuple
 
-from leosplit_extract import (
+from leosplit.extractor.leosplit_extract import (
     NDD_IMAGE_SIZE,
     NDD_LBA_MAP,
     lba_data_offset,
     load_manifest,
 )
-from leosplit_manifest import sanitize_name
+from leosplit.manifestor.leosplit_manifest import sanitize_name
 
 
 @dataclass
