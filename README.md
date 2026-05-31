@@ -13,7 +13,8 @@ then extract those ranges into standalone files for tools like Ghidra.
 - **DOL Fallback**: Automatically detects and parses GameCube DOL executable files if native metadata is not found
 - **Multiple Output Formats**: JSON (default) or YAML output
 - **File Identification**: Extracts cartridge file/module names and metadata
-- **Binary Extraction**: Uses a generated manifest to dump each LBA range into its own `.bin` file
+- **MFS Binary Extraction**: Traverses 64DD MFS directory entries and carves exact byte ranges from `.ndd` images
+- **Manifest Binary Extraction**: Still supports generated manifests for load-table based workflows
 
 ## Usage
 
@@ -21,6 +22,18 @@ Generate a manifest:
 
 ```bash
 python leosplit_manifest.py input.ndd -o manifest.json
+```
+
+Extract files directly from a 64DD MFS image:
+
+```bash
+python leosplit_extract.py input.ndd -o extracted
+```
+
+List detected MFS entries without extracting:
+
+```bash
+python leosplit_extract.py input.ndd --list
 ```
 
 Extract binaries from a manifest:
@@ -79,9 +92,14 @@ for example `extracted/03_NICHIYOUBI.bin`.
    - Validates DOL header structure
    - Extracts load address and entry point from RDRAM addresses
 
-3. **Extraction**: Reads each manifest entry
-   - Seeks to `lba_start * sector_size` in the `.ndd`
-   - Reads `lba_length * sector_size` bytes
+3. **Direct MFS Extraction**: Reads 64DD MFS directory entries
+   - Uses the real zone-dependent `.ndd` LBA map for full 64DD images
+   - Applies each entry's start LBA, intra-block offset, and byte-exact file size
+   - Writes carved files using their MFS name/type metadata
+
+4. **Manifest Extraction**: Reads each manifest entry
+   - Uses the real `.ndd` LBA map for full 64DD images, or fixed sectors for test images
+   - Reads `lba_length` blocks unless a byte-exact `file_size` is present
    - Writes the result as a standalone `.bin`
 
 ## Testing
