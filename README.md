@@ -15,7 +15,8 @@ then extract those ranges into standalone files for tools like Ghidra.
 - **File Identification**: Extracts cartridge file/module names and metadata
 - **MFS Binary Extraction**: Traverses 64DD MFS directory entries and carves exact byte ranges from `.ndd` images
 - **Manifest Binary Extraction**: Still supports generated manifests for load-table based workflows
-- **Splat-like Assembly Workspace**: Emits raw bins, MIPS assembly listings, symbol hints, and a YAML segment skeleton
+- **LeoSplit Assembly Workspace**: Emits raw bins, MIPS assembly listings, symbol hints, rebuild metadata, and build scaffolding
+- **Exact Image Rebuilds**: Reconstructs an `.ndd` from split bins and compares SHA-1 against the original
 
 ## Usage
 
@@ -76,7 +77,24 @@ This writes:
 - `split/bin/*.bin`: exact carved segment bytes
 - `split/asm/*.s`: big-endian MIPS assembly listings using manifest VRAM addresses
 - `split/symbols/*.sym`: entry labels, branch/jump labels, and rough data boundary hints
-- `split/leosplit.yaml`: a Splat-style segment skeleton for the project
+- `split/macro.inc`: assembler compatibility macros
+- `split/<basename>.ld`: a generated MIPS linker script scaffold
+- `split/Makefile`: rebuild and compare targets
+- `split/leosplit_workspace.json`: machine-readable rebuild metadata
+- `split/leosplit.yaml`: a human-readable segment skeleton for the project
+
+Rebuild the image from the workspace bins:
+
+```bash
+leosplit-build split -o split/build/rebuilt.ndd --base input.ndd --compare input.ndd
+```
+
+Or from inside the generated workspace:
+
+```bash
+cd split
+make compare
+```
 
 The manifest includes:
 - `file_id`: Unique identifier for each file entry
@@ -115,6 +133,9 @@ leosplit-extract input.ndd manifest.json -o extracted --verbose
 
 # Build a decompilation workspace with asm and symbol hints
 leosplit-asm input.ndd manifest.json -o split --overwrite --verbose
+
+# Rebuild and compare the image from split bins
+leosplit-build split -o split/build/rebuilt.ndd --base input.ndd --compare input.ndd
 ```
 
 Extractor output files are named with the manifest ID and sanitized file name,
@@ -149,6 +170,12 @@ for example `extracted/03_NICHIYOUBI.bin`.
    - Accepts explicit code ranges by file ID, manifest name, or generated segment name
    - Labels entry points and local branch/jump targets
    - Emits comments for possible data boundaries such as string regions and long zero runs
+
+6. **Workspace Rebuilds**: Uses generated workspace metadata
+   - Patches `bin/*.bin` back into a base image at the original ROM offsets
+   - Rejects segment size mismatches by default
+   - Can compare rebuilt output against the original image by SHA-1
+   - Generates `macro.inc`, `<basename>.ld`, and `Makefile` so the workspace can grow into a self-contained decomp project
 
 ## Testing
 

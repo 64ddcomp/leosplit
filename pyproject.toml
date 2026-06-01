@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "leosplit"
-version = "1.1.0a1"
+version = "1.2.0a1"
 description = "64DD disk image splitting and decompilation helpers"
 readme = "README.md"
 requires-python = ">=3.9"
@@ -28,6 +28,7 @@ classifiers = [
 leosplit-manifest = "leosplit.manifestor.leosplit_manifest:main"
 leosplit-extract = "leosplit.extractor.leosplit_extract:main"
 leosplit-asm = "leosplit.disassembler.leosplit_asm:main"
+leosplit-build = "leosplit.builder.leosplit_build:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

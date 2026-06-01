@@ -124,10 +124,24 @@ class TestLeoSplitAsm(unittest.TestCase):
 
             self.assertEqual(len(results), 1)
             self.assertTrue(os.path.isfile(os.path.join(output_dir, "leosplit.yaml")))
+            self.assertTrue(os.path.isfile(os.path.join(output_dir, "macro.inc")))
+            self.assertTrue(os.path.isfile(os.path.join(output_dir, "test.ld")))
+            self.assertTrue(os.path.isfile(os.path.join(output_dir, "Makefile")))
+            self.assertTrue(os.path.isfile(os.path.join(output_dir, "leosplit_workspace.json")))
             with open(os.path.join(output_dir, "asm", "01_BOOT.s"), "r", encoding="utf-8") as f:
                 asm = f.read()
             self.assertIn("vram=0x80200000", asm)
             self.assertIn("addiu $t0, $t0, 0x10", asm)
+            with open(os.path.join(output_dir, "macro.inc"), "r", encoding="utf-8") as f:
+                self.assertIn(".macro glabel name", f.read())
+            with open(os.path.join(output_dir, "test.ld"), "r", encoding="utf-8") as f:
+                ld_text = f.read()
+            self.assertIn("OUTPUT_ARCH(mips)", ld_text)
+            self.assertIn(".seg_01_BOOT", ld_text)
+            with open(os.path.join(output_dir, "Makefile"), "r", encoding="utf-8") as f:
+                makefile = f.read()
+            self.assertIn("$(PYTHON) -m leosplit.builder.leosplit_build", makefile)
+            self.assertIn("SOURCE_IMAGE := ../test.ndd", makefile)
             with open(os.path.join(output_dir, "bin", "01_BOOT.bin"), "rb") as f:
                 self.assertEqual(f.read(), payload)
             with open(os.path.join(output_dir, "symbols", "01_BOOT.sym"), "r", encoding="utf-8") as f:
